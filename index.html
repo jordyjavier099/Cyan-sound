@@ -420,9 +420,9 @@
         <section class="screen" id="view-home">
           <div class="chips-row" id="homeChips" style="margin:0 -1rem .4rem;">
             <button type="button" class="chip active" data-chip="all">Todo</button>
-            <button type="button" class="chip" data-chip="spotify">Spotify</button>
             <button type="button" class="chip" data-chip="jamendo">Jamendo</button>
             <button type="button" class="chip" data-chip="audius">Audius</button>
+            <button type="button" class="chip" data-chip="spotify">Spotify</button>
             <button type="button" class="chip" data-chip="genre:Electronic">Electrónica</button>
             <button type="button" class="chip" data-chip="genre:Rock">Rock</button>
             <button type="button" class="chip" data-chip="genre:Hip-Hop">Hip-Hop</button>
@@ -441,22 +441,12 @@
           <div id="homeGenreShelves"></div>
 
           <div class="shelf-head"><h2>Tus fuentes</h2></div>
-          <p class="lead" style="margin-bottom:.9rem;">Spotify busca en todo su catálogo con tu cuenta; Jamendo y Audius reproducen canciones completas aquí mismo, sin anuncios.</p>
-
-          <div class="source-card">
-            <div class="sc-head">
-              <h2>Spotify</h2>
-              <span class="source-tag">Catálogo completo</span>
-            </div>
-            <p>Login oficial con tu cuenta (OAuth PKCE, sin guardar tu contraseña) y búsqueda en canciones, artistas, álbumes y playlists. La reproducción completa llega en el M2.</p>
-            <div class="source-status" id="homeSpotifyStatus"><span class="dot"></span><span>Sin conectar todavía</span></div>
-            <button type="button" class="btn btn-primary btn-block" id="homeSpotifyBtn">Conectar Spotify</button>
-          </div>
+          <p class="lead" style="margin-bottom:.9rem;">Jamendo y Audius son tus fuentes principales: reproducen canciones completas aquí mismo, sin anuncios. Spotify queda como fuente secundaria de búsqueda.</p>
 
           <div class="source-card">
             <div class="sc-head">
               <h2>Jamendo</h2>
-              <span class="source-tag ghost">Creative Commons</span>
+              <span class="source-tag">Principal · Creative Commons</span>
             </div>
             <p>Música libre de artistas independientes, con canciones completas y sin anuncios. Solo necesitas un client_id gratuito de Jamendo.</p>
             <div class="source-status" id="homeJamendoStatus"><span class="dot"></span><span>Falta tu client_id de Jamendo</span></div>
@@ -466,7 +456,7 @@
           <div class="source-card">
             <div class="sc-head">
               <h2>Audius</h2>
-              <span class="source-tag ghost">Modo demo</span>
+              <span class="source-tag">Principal · Sin cuenta</span>
             </div>
             <p>Artistas independientes, canciones completas al instante y sin crear ninguna cuenta. Listo para escuchar.</p>
             <div class="source-status on" id="homeAudiusStatus"><span class="dot"></span><span>Disponible sin cuenta</span></div>
@@ -476,11 +466,23 @@
             </button>
           </div>
 
+          <div class="source-card">
+            <div class="sc-head">
+              <h2>Spotify</h2>
+              <span class="source-tag ghost">Secundaria</span>
+            </div>
+            <p>Fuente secundaria de búsqueda. Con cuenta Free, Spotify bloquea la Web API de las apps nuevas en modo desarrollo y devuelve error 403: por eso Jamendo y Audius son las fuentes principales. Si algún día tienes Premium, este mismo login vuelve a funcionar sin cambiar nada.</p>
+            <div class="source-status" id="homeSpotifyStatus"><span class="dot"></span><span>Sin conectar todavía</span></div>
+            <button type="button" class="btn btn-primary btn-block" id="homeSpotifyBtn">Conectar Spotify</button>
+          </div>
+
+          <div class="home-note"><strong>Hito M1:</strong> Jamendo y Audius son las fuentes principales, con reproducción completa aquí mismo. Spotify queda como búsqueda secundaria: con cuenta Free su Web API devuelve 403 para apps nuevas en modo desarrollo.</div>
+
           <div class="top-head">
             <h2>Top Tracks</h2>
             <button type="button" class="btn btn-ghost btn-small" id="topTracksRefresh" hidden>Actualizar</button>
           </div>
-          <p class="section-note">Tus 5 canciones más escuchadas en Spotify · Largo plazo</p>
+          <p class="section-note">Sección secundaria de Spotify · Tus 5 canciones más escuchadas · Largo plazo. Requiere que Spotify permita el acceso (con cuenta Free devuelve 403).</p>
           <div id="topTracksGate">
             <div class="empty-state">
               <strong>Conecta Spotify para ver tus Top Tracks</strong>
@@ -498,7 +500,6 @@
             </div>
           </div>
 
-          <div class="home-note"><strong>Hito M1:</strong> login + búsqueda en Spotify, y reproducción completa con Jamendo y Audius. La reproducción de Spotify (App Remote SDK, con Premium) llega en el M2.</div>
         </section>
 
         <!-- ================= PANTALLA: BUSCAR ================= -->
@@ -506,9 +507,9 @@
           <div class="screen-head"><h1>Explorar</h1></div>
 
           <div class="seg" role="tablist" aria-label="Fuente de búsqueda">
-            <button type="button" id="segSpotify" role="tab">Spotify</button>
             <button type="button" id="segJamendo" role="tab">Jamendo</button>
             <button type="button" id="segAudius" role="tab">Audius</button>
+            <button type="button" id="segSpotify" role="tab">Spotify</button>
           </div>
 
           <p class="section-eyebrow" style="margin-bottom:.45rem;">Explora por género</p>
@@ -611,7 +612,7 @@
 
           <button type="button" class="settings-entry" id="librarySettingsBtn">
             <span class="se-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.9"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
-            <span class="se-meta"><span class="se-title">Configuración</span><br /><span class="se-sub">Fuentes de música · Spotify, Jamendo y Audius</span></span>
+            <span class="se-meta"><span class="se-title">Configuración</span><br /><span class="se-sub">Fuentes de música · Jamendo, Audius y Spotify</span></span>
             <span class="se-chev" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           </button>
 
@@ -640,11 +641,58 @@
 
           <div class="card">
             <div class="sc-head" style="display:flex; align-items:center; gap:.6rem; margin-bottom:.35rem;">
+              <h2 style="margin:0;">Jamendo</h2>
+              <span class="source-tag">Principal · Creative Commons</span>
+            </div>
+            <div class="source-status" id="settingsJamendoStatus"><span class="dot"></span><span>Sin conectar</span></div>
+            <p class="hint">Jamendo es música libre (Creative Commons) de artistas independientes: canciones completas y sin anuncios. Su API pide un <strong>client_id gratuito</strong>: se crea en un minuto y queda guardado solo en tu navegador, igual que el Client ID de Spotify.</p>
+
+            <label class="field-label" for="jamendoClientIdInput">Tu client_id de Jamendo</label>
+            <div class="field-row">
+              <input type="text" id="jamendoClientIdInput" placeholder="Pega aquí tu client_id de Jamendo" autocomplete="off" autocapitalize="none" spellcheck="false" />
+              <button type="button" class="btn btn-ghost btn-small" id="saveJamendoBtn">Guardar</button>
+            </div>
+            <p class="save-state" id="jamendoSaveState" aria-live="polite"></p>
+
+            <ol class="steps">
+              <li><p>Entra a <a href="https://developer.jamendo.com" target="_blank" rel="noopener"><strong>developer.jamendo.com</strong></a> y pulsa <strong>«Get an API Key»</strong> / regístrate con una cuenta gratuita de Jamendo si aún no tienes una.</p></li>
+              <li><p>En tu panel de desarrollador, crea una aplicación nueva (<strong>«Create an application»</strong>): ponle un nombre (por ejemplo, <strong>Cyan Sound</strong>) y una descripción cualquiera.</p></li>
+              <li><p>Jamendo te mostrará las claves de tu app: copia el <strong>Client ID</strong> (no el Client Secret: esta app no lo usa).</p></li>
+              <li><p>Pégalo en el campo de arriba y pulsa <strong>Guardar</strong>. Cyan Sound comprueba la clave al momento y, si es válida, ya puedes buscar y escuchar Jamendo desde Explorar.</p></li>
+            </ol>
+          </div>
+
+          <div class="card">
+            <div class="sc-head" style="display:flex; align-items:center; gap:.6rem; margin-bottom:.35rem;">
+              <h2 style="margin:0;">Audius</h2>
+              <span class="source-tag">Principal · Sin clave</span>
+            </div>
+            <div class="source-status on" id="settingsAudiusStatus"><span class="dot"></span><span>Activado · Disponible sin cuenta</span></div>
+            <p class="hint" style="margin-bottom:.4rem;">Audius no necesita cuenta ni clave: reproduce canciones completas de artistas independientes. Puedes desactivarlo si no quieres que aparezca como fuente activa.</p>
+            <div class="toggle-row">
+              <div class="toggle-meta">
+                <div class="toggle-title">Usar Audius</div>
+                <div class="toggle-sub" id="audiusToggleSub">Activado — aparece en Explorar y en Inicio</div>
+              </div>
+              <label class="switch" aria-label="Activar o desactivar Audius">
+                <input type="checkbox" id="audiusToggle" checked />
+                <span class="track" aria-hidden="true"></span>
+              </label>
+            </div>
+            <button type="button" class="btn btn-ghost btn-block" id="settingsAudiusBtn" style="margin-top:.9rem;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5-11-6.5z"/></svg>
+              Escuchar Audius
+            </button>
+            <button type="button" class="btn btn-ghost btn-block" id="libAudiusBtn" hidden>Escuchar Audius</button>
+          </div>
+
+          <div class="card">
+            <div class="sc-head" style="display:flex; align-items:center; gap:.6rem; margin-bottom:.35rem;">
               <h2 style="margin:0;">Spotify</h2>
-              <span class="source-tag">Catálogo completo</span>
+              <span class="source-tag ghost">Secundaria</span>
             </div>
             <div class="source-status" id="settingsSpotifyStatus"><span class="dot"></span><span>Sin conectar todavía</span></div>
-            <p class="hint">Crea tu Client ID siguiendo los pasos y pégalo aquí. Solo hay que hacerlo una vez.</p>
+            <p class="hint">Fuente secundaria: crea tu Client ID siguiendo los pasos y pégalo aquí. Ten en cuenta que con cuenta Free Spotify devuelve 403 en su Web API para apps nuevas en modo desarrollo, así que la búsqueda puede seguir bloqueada aunque el login se complete.</p>
 
             <label class="field-label" for="clientIdInput">Tu Client ID de Spotify</label>
             <div class="field-row">
@@ -683,53 +731,6 @@
               </button>
               <div class="msg msg-error" id="authError" role="alert"></div>
             </div>
-          </div>
-
-          <div class="card">
-            <div class="sc-head" style="display:flex; align-items:center; gap:.6rem; margin-bottom:.35rem;">
-              <h2 style="margin:0;">Jamendo</h2>
-              <span class="source-tag ghost">Creative Commons</span>
-            </div>
-            <div class="source-status" id="settingsJamendoStatus"><span class="dot"></span><span>Sin conectar</span></div>
-            <p class="hint">Jamendo es música libre (Creative Commons) de artistas independientes: canciones completas y sin anuncios. Su API pide un <strong>client_id gratuito</strong>: se crea en un minuto y queda guardado solo en tu navegador, igual que el Client ID de Spotify.</p>
-
-            <label class="field-label" for="jamendoClientIdInput">Tu client_id de Jamendo</label>
-            <div class="field-row">
-              <input type="text" id="jamendoClientIdInput" placeholder="Pega aquí tu client_id de Jamendo" autocomplete="off" autocapitalize="none" spellcheck="false" />
-              <button type="button" class="btn btn-ghost btn-small" id="saveJamendoBtn">Guardar</button>
-            </div>
-            <p class="save-state" id="jamendoSaveState" aria-live="polite"></p>
-
-            <ol class="steps">
-              <li><p>Entra a <a href="https://developer.jamendo.com" target="_blank" rel="noopener"><strong>developer.jamendo.com</strong></a> y pulsa <strong>«Get an API Key»</strong> / regístrate con una cuenta gratuita de Jamendo si aún no tienes una.</p></li>
-              <li><p>En tu panel de desarrollador, crea una aplicación nueva (<strong>«Create an application»</strong>): ponle un nombre (por ejemplo, <strong>Cyan Sound</strong>) y una descripción cualquiera.</p></li>
-              <li><p>Jamendo te mostrará las claves de tu app: copia el <strong>Client ID</strong> (no el Client Secret: esta app no lo usa).</p></li>
-              <li><p>Pégalo en el campo de arriba y pulsa <strong>Guardar</strong>. Cyan Sound comprueba la clave al momento y, si es válida, ya puedes buscar y escuchar Jamendo desde Explorar.</p></li>
-            </ol>
-          </div>
-
-          <div class="card">
-            <div class="sc-head" style="display:flex; align-items:center; gap:.6rem; margin-bottom:.35rem;">
-              <h2 style="margin:0;">Audius</h2>
-              <span class="source-tag ghost">Sin clave</span>
-            </div>
-            <div class="source-status on" id="settingsAudiusStatus"><span class="dot"></span><span>Activado · Disponible sin cuenta</span></div>
-            <p class="hint" style="margin-bottom:.4rem;">Audius no necesita cuenta ni clave: reproduce canciones completas de artistas independientes. Puedes desactivarlo si no quieres que aparezca como fuente activa.</p>
-            <div class="toggle-row">
-              <div class="toggle-meta">
-                <div class="toggle-title">Usar Audius</div>
-                <div class="toggle-sub" id="audiusToggleSub">Activado — aparece en Explorar y en Inicio</div>
-              </div>
-              <label class="switch" aria-label="Activar o desactivar Audius">
-                <input type="checkbox" id="audiusToggle" checked />
-                <span class="track" aria-hidden="true"></span>
-              </label>
-            </div>
-            <button type="button" class="btn btn-ghost btn-block" id="settingsAudiusBtn" style="margin-top:.9rem;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5-11-6.5z"/></svg>
-              Escuchar Audius
-            </button>
-            <button type="button" class="btn btn-ghost btn-block" id="libAudiusBtn" hidden>Escuchar Audius</button>
           </div>
 
           <p class="lib-note">Las claves se guardan con las mismas claves de almacenamiento de siempre en este navegador. Nada se envía a otro servidor.</p>
@@ -955,7 +956,7 @@
       /* ================= Navegación de la app ================= */
       var viewHome = $("view-home"), viewSearch = $("view-search"), viewLibrary = $("view-library"), viewSettings = $("view-settings");
       var currentTab = "home";
-      var currentSource = "spotify";
+      var currentSource = "jamendo";
       var previousTab = "home";
 
       function storedAudiusEnabled(){
@@ -1992,7 +1993,7 @@
         homeQuickList.innerHTML = "";
         homeShelf.innerHTML = "";
         if(!tracks || !tracks.length){
-          homeQuickList.innerHTML = '<div class="empty-state"><strong>Sin tendencias por ahora</strong>Abre Explorar y busca en Audius, Jamendo o Spotify.</div>';
+          homeQuickList.innerHTML = '<div class="empty-state"><strong>Sin tendencias por ahora</strong>Abre Explorar y busca en Jamendo, Audius o Spotify.</div>';
           return;
         }
         var playables = tracks.map(audiusPlayable);
@@ -2235,7 +2236,7 @@
       loadGenreShelves();
       renderLibrary();
       if($("favExploreBtn")) $("favExploreBtn").addEventListener("click", function(){ goTab("search"); setSource(currentSource); });
-      setSource("spotify");
+      setSource("jamendo");
       refreshSpotifyGate();
       refreshJamendoGate();
       refreshAudiusGate();
