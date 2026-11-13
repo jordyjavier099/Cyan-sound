@@ -263,6 +263,9 @@
         display:grid; place-items:center; min-height:44px;
       }
       .play-btn:hover{ background:rgba(255,255,255,.1); }
+      .row.tappable{ cursor:pointer; }
+      .player .p-error{ color:var(--danger); font-size:.83rem; font-weight:600; margin-top:.5rem; }
+      .player .p-error.busy{ color:var(--muted); font-weight:500; }
       .row.playing{ background:rgba(167,139,250,.08); }
       .row.playing .title{ color:var(--cyan-bright); }
 
@@ -754,6 +757,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5.5v13l8.5-6.5L6 5.5z"/><path d="M16 5h2.5v14H16z"/></svg>
           </button>
         </div>
+        <div class="p-error" id="playerError" role="alert" hidden></div>
         <div class="p-progress">
           <span class="p-time" id="playerCur">0:00</span>
           <div class="progress-track" id="progressTrack" role="slider" aria-label="Progreso de la canción" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><div class="progress-fill" id="progressFill"></div></div>
@@ -812,7 +816,7 @@
       </nav>
     </div>
 
-    <audio id="audio" preload="none"></audio>
+    <audio id="audio" preload="auto"></audio>
 
     <script>
     (function(){
@@ -825,7 +829,7 @@
       var LS_AUDIUS = "cyansound.audiusEnabled";
       var SS_TOKENS = "cyansound.tokens";
       var SS_PKCE = "cyansound.pkce";
-      var AUDIUS_API = "https://discoveryprovider.audius.co/v1";
+      var AUDIUS_API = "https://api.audius.co/v1";
       var AUDIUS_APP = "cyan-sound-m1";
       var JAMENDO_API = "https://api.jamendo.com/v3.0";
       var SPOTIFY_SCOPES = "user-read-private user-read-email user-top-read";
@@ -1619,9 +1623,14 @@
         btn.type = "button"; btn.className = "play-btn";
         btn.setAttribute("aria-label", "Reproducir " + esc(track.title));
         btn.innerHTML = playIcon();
-        btn.addEventListener("click", function(){
-          togglePlay(track.key, track.sourceType, track.title, track.artist, track.art, track.dur, track.src, row, track.sourceLabel, queueList);
-        });
+        function doPlay(){
+          togglePlay(track.key, track.sourceType, track.title, track.artist, track.art, track.dur, track.src, row, track.sourceLabel, queueList, track.altSrc || "");
+        }
+        btn.addEventListener("click", function(ev){ ev.stopPropagation(); doPlay(); });
+        /* Tocar cualquier parte de la fila reproduce: antes solo respondía
+           el botón pequeño y tocar la canción no hacía nada. */
+        row.classList.add("tappable");
+        row.addEventListener("click", doPlay);
         row.appendChild(btn);
         row._btn = btn;
         if(currentKey === track.key && !audio.paused){ row.classList.add("playing"); btn.innerHTML = pauseIcon(); }
@@ -1680,6 +1689,92 @@
       }
       /* Cola de reproducción: lista de canciones reproducibles y posición actual */
       var playQueue = [], queueIndex = -1, currentTrack = null;
+      /* Recuperación de reproducción: algunos streams fallan al primer intento
+         en el elemento <audio> (Audius responde con redirecciones encadenadas
+         hasta un enlace firmado, que Safari/iOS no siempre sigue al reproducir;
+         y Jamendo tiene canciones cuyo archivo devuelve 404). Por eso, si el
+         primer intento falla, se reintenta una vez con una dirección que el
+         navegador sí puede sonar, y si tampoco, se avisa en el reproductor y
+         se pasa a la siguiente de la cola en vez de quedarse en silencio. */
+      var retryStage = {}, recovering = false;
+      function showPlayerError(text, busy){
+        var el = $("playerError");
+        if(!el) return;
+        el.textContent = text || "";
+        el.hidden = !text;
+        el.classList.toggle("busy", !!busy);
+      }
+      function attemptPlay(){
+        var p = null;
+        try { p = audio.play(); } catch(e){}
+        if(p && p.catch) p.catch(function(err){
+          if(err && err.name === "NotAllowedError"){
+            showPlayerError("Toca reproducir otra vez: el navegador pidió un toque directo para dar sonido.");
+            setRowState(currentRow, false);
+            playerToggleIcon.innerHTML = '<path d="M8 5.5v13l11-6.5-11-6.5z"/>';
+          }
+          /* NotSupportedError y demás: los recupera el evento «error». */
+        });
+      }
+      function resolveAudiusStream(url){
+        /* Sigue la redirección del endpoint /stream fuera del elemento de
+           audio y devuelve la dirección final firmada del archivo. Solo se
+           pide el primer byte y se cancela el resto de la descarga. */
+        return fetch(url, { method:"GET", headers:{ "Range":"bytes=0-0" } }).then(function(res){
+          var finalUrl = res.url || "";
+          try { if(res.body && res.body.cancel) res.body.cancel(); } catch(e){}
+          return finalUrl;
+        }).catch(function(){ return ""; });
+      }
+      function failTrack(){
+        recovering = false;
+        var t = currentTrack;
+        var msg = currentSourceType === "jamendo"
+          ? "Esta canción de Jamendo no se pudo reproducir (su archivo no respondió). Prueba con otra."
+          : "Esta canción de Audius no se pudo reproducir. Prueba con otra.";
+        showPlayerError(msg);
+        try { showMsg(sourceErrorEl(), msg); } catch(e){}
+        setRowState(currentRow, false);
+        playerToggleIcon.innerHTML = '<path d="M8 5.5v13l11-6.5-11-6.5z"/>';
+        var ft = $("fpToggleIcon"); if(ft) ft.innerHTML = '<path d="M8 5.5v13l11-6.5-11-6.5z"/>';
+        if(t && queueIndex < playQueue.length - 1){
+          showPlayerError(msg + " Pasando a la siguiente…");
+          setTimeout(function(){ if(currentTrack === t) playNext(); }, 800);
+        }
+      }
+      function recoverPlayback(){
+        var t = currentTrack;
+        if(!t || recovering) return;
+        var stage = retryStage[t.key] || 0;
+        if(t.sourceType === "audius" && stage < 1){
+          recovering = true;
+          retryStage[t.key] = 1;
+          showPlayerError("Conectando con el servidor de la canción…", true);
+          resolveAudiusStream(t.src).then(function(finalUrl){
+            recovering = false;
+            if(!currentTrack || currentTrack.key !== t.key) return;
+            if(finalUrl && finalUrl !== t.src){
+              audio.src = finalUrl;
+              audio.load();
+              attemptPlay();
+            } else {
+              failTrack();
+            }
+          });
+          return;
+        }
+        if(t.sourceType === "jamendo" && t.altSrc && stage < 1){
+          recovering = true;
+          retryStage[t.key] = 1;
+          showPlayerError("Reintentando esta canción…", true);
+          audio.src = t.altSrc;
+          audio.load();
+          attemptPlay();
+          recovering = false;
+          return;
+        }
+        failTrack();
+      }
       function startTrack(track, row){
         setRowState(currentRow, false);
         currentKey = track.key;
@@ -1694,21 +1789,25 @@
         $("playerCur").textContent = "0:00";
         progressFill.style.width = "0%";
         player.hidden = false;
+        showPlayerError("");
+        if(!track.src){
+          failTrack();
+          syncFullPlayer();
+          return;
+        }
         audio.src = track.src;
-        audio.play().catch(function(){
-          showMsg(sourceErrorEl(), "El navegador bloqueó la reproducción automática. Pulsa el botón de reproducir otra vez.");
-        });
-        setRowState(currentRow, true);
+        audio.load();
+        attemptPlay();
         playerToggleIcon.innerHTML = '<path d="M7 4h4v16H7zM13 4h4v16h-4z"/>';
         syncFullPlayer();
       }
-      function togglePlay(key, sourceType, title, artist, art, durSec, src, row, sourceLabel, queueList){
+      function togglePlay(key, sourceType, title, artist, art, durSec, src, row, sourceLabel, queueList, altSrc){
         if(currentKey === key){
-          if(audio.paused){ audio.play().catch(function(){}); }
+          if(audio.paused){ attemptPlay(); }
           else { audio.pause(); }
           return;
         }
-        var track = { key:key, sourceType:sourceType, title:title, artist:artist, art:art || "", dur:durSec || 0, src:src, sourceLabel:sourceLabel };
+        var track = { key:key, sourceType:sourceType, title:title, artist:artist, art:art || "", dur:durSec || 0, src:src, sourceLabel:sourceLabel, altSrc:altSrc || "" };
         if(queueList && queueList.length){
           playQueue = queueList.slice();
           queueIndex = -1;
@@ -1773,8 +1872,13 @@
             btn.setAttribute("aria-label", "Reproducir " + esc(item.title));
             btn.innerHTML = (idx === queueIndex && !audio.paused) ? pauseIcon() : playIcon();
             (function(i, track){
-              btn.addEventListener("click", function(){
-                if(currentKey === track.key){ if(audio.paused){ audio.play().catch(function(){}); } else { audio.pause(); } return; }
+              btn.addEventListener("click", function(ev){
+                if(ev && ev.stopPropagation) ev.stopPropagation();
+                if(currentKey === track.key){ if(audio.paused){ attemptPlay(); } else { audio.pause(); } return; }
+                playQueueAt(i);
+              });
+              row.addEventListener("click", function(){
+                if(currentKey === track.key){ if(audio.paused){ attemptPlay(); } else { audio.pause(); } return; }
                 playQueueAt(i);
               });
             })(idx, item);
@@ -1790,7 +1894,7 @@
       function closeFullPlayer(){ $("fullPlayer").hidden = true; }
       playerToggle.addEventListener("click", function(){
         if(!currentKey) return;
-        if(audio.paused){ audio.play().catch(function(){}); } else { audio.pause(); }
+        if(audio.paused){ attemptPlay(); } else { audio.pause(); }
       });
       $("playerNext").addEventListener("click", function(){ playNext(); });
       document.querySelector(".player .p-meta").addEventListener("click", function(){ openFullPlayer(); });
@@ -1798,7 +1902,7 @@
       $("fpClose").addEventListener("click", function(){ closeFullPlayer(); });
       $("fpToggle").addEventListener("click", function(){
         if(!currentKey) return;
-        if(audio.paused){ audio.play().catch(function(){}); } else { audio.pause(); }
+        if(audio.paused){ attemptPlay(); } else { audio.pause(); }
       });
       $("fpNext").addEventListener("click", function(){ playNext(); });
       $("fpPrev").addEventListener("click", function(){ playPrev(); });
@@ -1849,11 +1953,12 @@
         syncFullPlayer();
       });
       audio.addEventListener("error", function(){
-        if(!currentKey) return;
-        showMsg(sourceErrorEl(), currentSourceType === "jamendo"
-          ? "No se pudo reproducir esta canción desde Jamendo. Prueba con otra."
-          : "No se pudo reproducir esta canción desde Audius. Prueba con otra.");
-        setRowState(currentRow, false);
+        if(!currentKey || !currentTrack) return;
+        if(!audio.error && !audio.src) return;
+        recoverPlayback();
+      });
+      audio.addEventListener("playing", function(){
+        showPlayerError("");
       });
       progressTrack.addEventListener("click", function(e){
         if(!audio.duration) return;
@@ -1910,10 +2015,13 @@
         btn.type = "button"; btn.className = "play-btn";
         btn.setAttribute("aria-label", "Reproducir " + esc(tr.title));
         btn.innerHTML = playIcon();
-        btn.addEventListener("click", function(){
+        function doPlay(){
           togglePlay("audius:" + tr.id, "audius", tr.title, tr.user ? tr.user.name : "", art, tr.duration,
             AUDIUS_API + "/tracks/" + encodeURIComponent(tr.id) + "/stream?app_name=" + AUDIUS_APP, row, "Audius", queueList);
-        });
+        }
+        btn.addEventListener("click", function(ev){ ev.stopPropagation(); doPlay(); });
+        row.classList.add("tappable");
+        row.addEventListener("click", doPlay);
         row.appendChild(btn);
         row._btn = btn;
         return row;
@@ -2017,7 +2125,7 @@
           var shelf = document.createElement("div"); shelf.className = "shelf-scroll";
           wrap.appendChild(head); wrap.appendChild(shelf);
           showShelfSkeletons(shelf, 5);
-          audiusGet("/tracks/trending/genre?genre=" + encodeURIComponent(g.genre) + "&limit=10&app_name=" + AUDIUS_APP).then(function(tracks){
+          audiusGet("/tracks/trending?genre=" + encodeURIComponent(g.genre) + "&limit=10&app_name=" + AUDIUS_APP).then(function(tracks){
             shelf.innerHTML = "";
             if(!tracks.length){
               shelf.innerHTML = '<p class="section-note">Sin canciones por ahora en este género.</p>';
@@ -2123,7 +2231,8 @@
           key: "jamendo:" + tr.id, sourceType: "jamendo",
           title: tr.name, artist: tr.artist_name || "",
           art: tr.image || "", dur: tr.duration || 0,
-          src: tr.audio || "", sourceLabel: "Jamendo · Creative Commons"
+          src: tr.audio || "", altSrc: tr.audiodownload || "",
+          sourceLabel: "Jamendo · Creative Commons"
         };
       }
       function jamendoTrackRow(tr, queueList){
@@ -2145,13 +2254,16 @@
         btn.type = "button"; btn.className = "play-btn";
         btn.setAttribute("aria-label", "Reproducir " + esc(tr.name));
         btn.innerHTML = playIcon();
-        btn.addEventListener("click", function(){
+        function doPlay(){
           if(!tr.audio){
             showMsg(jamendoError, "Esta canción de Jamendo no trae audio reproducible. Prueba con otra.");
             return;
           }
-          togglePlay("jamendo:" + tr.id, "jamendo", tr.name, tr.artist_name || "", tr.image || "", tr.duration, tr.audio, row, "Jamendo · Creative Commons", queueList);
-        });
+          togglePlay("jamendo:" + tr.id, "jamendo", tr.name, tr.artist_name || "", tr.image || "", tr.duration, tr.audio, row, "Jamendo · Creative Commons", queueList, tr.audiodownload || "");
+        }
+        btn.addEventListener("click", function(ev){ ev.stopPropagation(); doPlay(); });
+        row.classList.add("tappable");
+        row.addEventListener("click", doPlay);
         row.appendChild(btn);
         row._btn = btn;
         return row;
